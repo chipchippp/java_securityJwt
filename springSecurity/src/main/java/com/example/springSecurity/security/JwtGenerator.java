@@ -3,16 +3,20 @@ package com.example.springSecurity.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import jakarta.persistence.Entity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import java.security.Key;
 import java.util.Date;
 
 @Component
 public class JwtGenerator {
-    public String generateToke(Authentication authentication) {
+//    private static final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+
+    public String generateToken(Authentication authentication) {
         String username = authentication.getName();
         Date currentDate = new Date();
         Date expirationDate = new Date(currentDate.getTime() + SecurityConstants.JWT_EXPIRATION);

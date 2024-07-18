@@ -1,11 +1,13 @@
 package com.example.springSecurity.controller;
 
+import com.example.springSecurity.dto.AuthResponseDto;
 import com.example.springSecurity.dto.LoginDto;
 import com.example.springSecurity.dto.RegisterDto;
 import com.example.springSecurity.entity.Role;
 import com.example.springSecurity.entity.UserEntity;
 import com.example.springSecurity.repository.RoleRepository;
 import com.example.springSecurity.repository.UserRepository;
+import com.example.springSecurity.security.JwtGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,38 +33,43 @@ public class AuthController {
     private UserRepository userRepository;
     private RoleRepository roleRepository;
     private PasswordEncoder passwordEncoder;
+    private JwtGenerator jwtGenerator;
 
     @Autowired
-    public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
+    public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository,
+                          RoleRepository roleRepository, PasswordEncoder passwordEncoder, JwtGenerator jwtGenerator) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtGenerator = jwtGenerator;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginDto loginDto) {
-        Authentication authenticate = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword())
-        );
-        SecurityContextHolder.getContext().setAuthentication(authenticate);
-        return new ResponseEntity<>("User logged in successfully!", HttpStatus.OK);
+    public ResponseEntity<AuthResponseDto> login(@RequestBody LoginDto loginDto){
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        loginDto.getUsername(),
+                        loginDto.getPassword()));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String token = jwtGenerator.generateToken(authentication);
+        return new ResponseEntity<>(new AuthResponseDto(token), HttpStatus.OK);
     }
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterDto registerDto) {
         if (userRepository.existsByUsername(registerDto.getUsername())) {
-            return new ResponseEntity<>("Error: Username is already taken!", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Username is taken!", HttpStatus.BAD_REQUEST);
         }
+
         UserEntity user = new UserEntity();
         user.setUsername(registerDto.getUsername());
-        user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
-
+        user.setPassword(passwordEncoder.encode((registerDto.getPassword())));
         Role roles = roleRepository.findByName("USER").get();
-//                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
         user.setRoles(Collections.singletonList(roles));
+
         userRepository.save(user);
 
-        return new ResponseEntity<>("User registered successfully!", HttpStatus.OK);
+        return new ResponseEntity<>("User registered success!", HttpStatus.OK);
     }
 }
